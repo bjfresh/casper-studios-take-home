@@ -1,0 +1,28 @@
+# Infrastructure only. Apps run on the host (`pnpm dev`) for fast hot reload.
+# No Redis yet — add one here, configured as a cache, when something needs it:
+#   command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ''
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: casper-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-app_test}
+    ports:
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -d targets the real DB: the server accepts connections before init
+      # scripts finish, so probing only the server can report healthy too early.
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:

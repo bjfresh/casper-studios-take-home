@@ -1,0 +1,77 @@
+# Full stack in containers (`pnpm docker:up`). Day-to-day development uses
+# docker-compose.db.yml plus apps on the host instead.
+include:
+  - docker-compose.db.yml
+
+x-database-url: &database-url
+  # Inside the compose network Postgres is `postgres:5432`, not the host port.
+  DATABASE_URL: postgres://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@postgres:5432/${POSTGRES_DB:-app}
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      # The build stage still has dev dependencies (drizzle-kit, tsx).
+      target: build
+    container_name: casper-migrate
+    # Schema first, then the curriculum (reference data the app needs).
+    command: ['sh', '-c', 'pnpm --filter @repo/db migrate && pnpm --filter @repo/api curriculum:sync']
+    environment:
+      <<: *database-url
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: casper-api
+    restart: unless-stopped
+    environment:
+      <<: *database-url
+      NODE_ENV: production
+      PORT: 3001
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      # Empty → auth not configured → authenticated routes fail closed (503).
+      PRIVY_APP_ID: ${PRIVY_APP_ID:-}
+      PRIVY_APP_SECRET: ${PRIVY_APP_SECRET:-}
+      PRIVY_VERIFICATION_KEY: ${PRIVY_VERIFICATION_KEY:-}
+    ports:
+      - '${API_PORT:-3001}:3001'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/health/ready']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_* is inlined at build time, so it must be a build arg —
+        # setting it at runtime has no effect. It's the URL the *browser* uses.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_PRIVY_APP_ID: ${NEXT_PUBLIC_PRIVY_APP_ID:-}
+    container_name: casper-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Server-side requests (the lesson route resolves slugs on the server)
+      # go container-to-container; the browser keeps using NEXT_PUBLIC_API_URL.
+      API_INTERNAL_URL: http://api:3001
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000']
+      interval: 5s
+      timeout: 3s
+      retries: 10

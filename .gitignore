@@ -1,0 +1,15 @@
+node_modules
+.turbo
+dist
+.next
+next-env.d.ts
+coverage
+playwright-report
+test-results
+# Vitest browser mode failure screenshots and attachments
+.vitest
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+.DS_Store

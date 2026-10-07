@@ -1,0 +1,105 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  // Honour .gitignore so ignore lists aren't maintained in two places.
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    // Mostly redundant with .gitignore, but listed explicitly so a file that is
+    // *committed* yet generated (migrations, icon output) is never reformatted —
+    // the generator would just revert it, producing churn.
+    "includes": [
+      "**",
+      "!**/.next",
+      "!**/dist",
+      "!**/.turbo",
+      "!**/coverage",
+      "!**/playwright-report",
+      "!**/test-results",
+      "!**/pnpm-lock.yaml",
+      "!**/next-env.d.ts",
+      "!packages/db/drizzle",
+      "!apps/web/src/components/icons/generated",
+      "!**/vendor"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "all"
+    }
+  },
+  "json": {
+    "formatter": { "enabled": true }
+  },
+  "css": {
+    // Without this, Tailwind v4's @theme / @apply / @custom-variant parse as errors.
+    "parser": { "tailwindDirectives": true },
+    "formatter": { "enabled": true }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": { "source": { "organizeImports": "on" } }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "suspicious": {
+        // `any` switches the checker off exactly where a boundary needs it most.
+        "noExplicitAny": "error"
+      },
+      "style": {
+        // `!` asserts something the compiler can't see — narrow or throw instead.
+        "noNonNullAssertion": "error",
+        "useConst": "error",
+        // Enums have runtime output and nominal quirks; use `as const` + a union.
+        "noEnum": "error",
+        // Vendor boundaries: each SDK is imported in exactly one place (see the
+        // overrides below), so the vendor stays replaceable and auth behaves
+        // the same everywhere.
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@privy-io/react-auth": "Use useAuth() from @/hooks/use-auth: the app's only auth surface.",
+              "@privy-io/node": "Depend on AuthClient (apps/api/src/auth/auth-client.ts), not the Privy SDK."
+            }
+          }
+        }
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // The two files that ARE the web vendor boundary.
+      "includes": ["apps/web/src/hooks/use-auth.ts", "apps/web/src/providers/AuthProvider.tsx"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    },
+    {
+      // The API's Privy adapter is the only file that may import the SDK.
+      "includes": ["apps/api/src/auth/privy-auth-client.ts"],
+      "linter": { "rules": { "style": { "noRestrictedImports": "off" } } }
+    },
+    {
+      // The icon generator owns this markup; titles/labels are applied by the
+      // registry wrapper, not each generated SVG.
+      "includes": ["apps/web/src/components/icons/generated/**"],
+      "linter": { "rules": { "a11y": { "noSvgWithoutTitle": "off" } } }
+    }
+  ]
+}

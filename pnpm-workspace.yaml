@@ -1,0 +1,18 @@
+packages:
+  - apps/*
+  - packages/*
+
+# One place to pin versions shared across workspaces; workspaces reference them
+# as "catalog:". Toolchain entries are exact: their output is committed or
+# compared (type errors, test results, e2e snapshots), so a caret range would
+# let two machines disagree. Runtime libraries may float.
+catalog:
+  # Toolchain — exact
+  typescript: 7.0.2
+  vitest: 5.0.3
+  '@vitest/browser-playwright': 5.0.3
+  '@playwright/test': 1.63.0
+  tsx: 4.23.15
+  # Runtime — ranges
+  zod: ^4.6.5
+  '@types/node': ^24.0.0
