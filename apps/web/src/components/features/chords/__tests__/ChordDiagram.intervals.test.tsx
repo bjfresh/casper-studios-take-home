@@ -35,14 +35,17 @@ function contrast(a: string, b: string) {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** The glyphs' ink box on screen, from the browser's own font metrics. */
-function inkBox(text: SVGTextElement) {
+/**
+ * The glyphs' ink box on screen, from the browser's own font metrics. `only`
+ * measures part of the label (its digits) at the same position.
+ */
+function inkBox(text: SVGTextElement, only?: string) {
   const style = getComputedStyle(text)
   const ctm = text.getScreenCTM()
   if (!ctm) throw new Error('no CTM')
   const context = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D
   context.font = `${style.fontWeight} ${Number.parseFloat(style.fontSize) * ctm.a}px ${style.fontFamily}`
-  const metrics = context.measureText(text.textContent ?? '')
+  const metrics = context.measureText(only ?? text.textContent ?? '')
   const point = (text.ownerSVGElement as SVGSVGElement).createSVGPoint()
   point.x = Number(text.getAttribute('x'))
   point.y =
@@ -76,10 +79,14 @@ describe('interval labels', () => {
       const ink = inkBox(text)
       // Centred on the ink, vertically.
       expect(Math.abs((ink.top + ink.bottom) / 2 - (box.top + box.bottom) / 2)).toBeLessThan(1)
-      // Reaching about 2 units (≈2–3px) past the top of the number.
-      const margin = (ink.top - box.top) / ink.scale
+      // Reaching about 2 units (≈2–3px) past the top of the NUMBER. Measured
+      // on the digits: the ♭ comes from a system fallback font (the label
+      // font has none), whose height differs by OS, so it only has to fit.
+      const digits = text.textContent?.replace(/[^0-9]/g, '') ?? ''
+      const margin = (inkBox(text, digits).top - box.top) / ink.scale
       expect(margin).toBeGreaterThan(1.5)
       expect(margin).toBeLessThan(3)
+      expect(ink.top).toBeGreaterThanOrEqual(box.top)
       // Wide enough for the whole label.
       expect(box.width).toBeGreaterThan(ink.width)
       expect(getComputedStyle(disc).fill).toBe(getComputedStyle(document.body).backgroundColor)
