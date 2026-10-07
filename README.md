@@ -11,9 +11,12 @@ packages/
   shared/     Types, Zod schemas, pure utils (storage-agnostic)
   db/         Drizzle schema, migrations, client (API only)
 .agents/rules/  Path-scoped conventions (read the ones matching the file you edit)
+docs/           Repo-wide guides, e.g. deployment
 ```
 
-Each directory has a README describing what belongs there.
+Each directory has a README describing what belongs there. To host it, see
+[`docs/deployment.md`](docs/deployment.md) (Vercel for the web app, Northflank
+for the API and Postgres).
 
 ## Setup
 
@@ -31,8 +34,10 @@ pnpm dev            # web on :3000, api on :3001
 
 Auth works without credentials (sign-in shows as unavailable). To enable it,
 create a Privy app and set the `PRIVY_*` and `NEXT_PUBLIC_PRIVY_APP_ID` values
-in `.env`. Google and Apple also need provider setup; see
-`apps/web/src/constants/auth.ts`.
+in `.env`. Login methods are email and Google; Google must also be enabled in
+the Privy dashboard (see `apps/web/src/constants/auth.ts`).
+
+`/design` (development only) is a living gallery of the design system.
 
 ## Scripts
 
@@ -102,11 +107,14 @@ loading itself is what's broken.
   through Privy's dependencies, and they have no prebuilt binary for Alpine,
   so the Docker build would need a full compiler toolchain. `ws` falls back to
   plain JavaScript.
-- **Onboarding is front-loaded.** **Create account** collects the player's settings
-  before sign-up and keeps them in localStorage, validated by the shared
+- **One Sign In button; onboarding is front-loaded.** Its modal offers Sign In
+  (straight to Privy) or Sign Up, which collects the player's settings before
+  the account exists and keeps them in localStorage, validated by the shared
   schema. After sign-up they're saved to `user_settings` and the local copy is
-  removed. An account that already has settings keeps them. Settings in the
-  app auto-save, so its switches take effect immediately.
+  removed; a new player who used Sign In instead gets this device's
+  preferences saved with a starting name. An account that already has
+  settings keeps them. Settings auto-save, so every control takes effect
+  immediately.
 - **The chord curriculum is reference data in code**
   (`apps/api/src/curriculum/curriculum-source.ts`), synced by slug with
   `pnpm db:curriculum`. The sync never deletes a group or chord, because user
@@ -119,6 +127,10 @@ loading itself is what's broken.
   and it's imported into the account after sign-up. Got it, Skip and finish
   follow one set of rules (`progress-rules.ts` in `@repo/shared`), applied in
   the browser for guests and in SQL for accounts.
+- **Plays are stored on the device first.** A signed-in player's plays go to
+  an outbox in localStorage (read and written through React Query) and sync
+  to the API in the background, removed only once the server confirms. A
+  lesson never waits on, or fails because of, the network.
 - **Preferences** (instrument, tuning, fretboard labels) have one shape for
   guests and accounts, are changed only through `usePreferences()`, and are
   kept valid by one shared normalization rule (note names and finger numbers
