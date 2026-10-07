@@ -1,0 +1,2 @@
+ALTER TABLE "user_settings" ADD COLUMN "auto_progress_seconds" smallint DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD CONSTRAINT "user_settings_auto_progress_valid" CHECK ("user_settings"."auto_progress_seconds" = 0 or "user_settings"."auto_progress_seconds" between 3 and 30);
