@@ -7,18 +7,21 @@ import {
   noteLabelMode,
   sameTuning,
 } from '@repo/shared'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { ChordDiagram } from '@/components/features/chords/ChordDiagram'
 import { SettingsBar } from '@/components/features/settings-menu/SettingsMenu'
 import { Button } from '@/components/ui/Button'
 import { LinkButton } from '@/components/ui/LinkButton'
 import { Text } from '@/components/ui/Text'
-import { ROUTES } from '@/constants/routes'
+import { lessonRoute, ROUTES } from '@/constants/routes'
+import { useApi } from '@/hooks/use-api'
 import { useLessonRecorder } from '@/hooks/use-lesson-progress'
 import { usePreferences } from '@/hooks/use-preferences'
 import { toApiError } from '@/services/api-errors'
 import { cn } from '@/utils/cn'
 import { LessonSteps } from './LessonSteps'
+import { SignUpPrompt, useSignUpPrompt } from './SignUpPrompt'
 
 /** The lesson's own column: phone width, centred in the wider page box. */
 const LESSON_COLUMN = 'mx-auto w-full max-w-md'
@@ -177,7 +180,7 @@ export function LessonPage({ lesson }: { lesson: LessonContent }) {
           <Text as="h2" variant="heading-2">
             Lesson complete
           </Text>
-          <LinkButton href={ROUTES.home} label="Back to lessons" />
+          <LessonComplete lesson={lesson} />
         </section>
       ) : (
         item && (
@@ -298,6 +301,42 @@ export function LessonPage({ lesson }: { lesson: LessonContent }) {
 }
 
 /** A back chevron, sized to match the menu icon opposite. */
+/**
+ * After the last item: Next lesson (primary), or Back to lessons when this is
+ * the last one or the list can't be loaded. A guest's first finished lesson
+ * also gets the sign-up invitation, set further apart so it reads as a
+ * separate offer rather than part of the navigation.
+ */
+function LessonComplete({ lesson }: { lesson: LessonContent }) {
+  const api = useApi()
+  const showPrompt = useSignUpPrompt()
+  // The same query as the lesson grid, so coming from home it's already cached.
+  const lessons = useQuery(
+    api.publicQuery.lessons.list.queryOptions({ input: { instrument: lesson.instrument } }),
+  )
+  const next = (lessons.data ?? [])
+    .filter((other) => other.sortOrder > lesson.sortOrder)
+    .sort((a, b) => a.sortOrder - b.sortOrder)[0]
+
+  return (
+    <>
+      {next ? (
+        <LinkButton href={lessonRoute(next.slug)} label="Next lesson" />
+      ) : lessons.isPending ? (
+        // Same size as the real button, so nothing shifts when it resolves.
+        <LinkButton href={ROUTES.home} label="Next lesson" disabled />
+      ) : (
+        <LinkButton href={ROUTES.home} label="Back to lessons" />
+      )}
+      {showPrompt && (
+        <div className="mt-6 w-full">
+          <SignUpPrompt />
+        </div>
+      )}
+    </>
+  )
+}
+
 function BackArrow() {
   return (
     <svg

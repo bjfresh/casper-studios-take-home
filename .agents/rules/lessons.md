@@ -47,6 +47,15 @@ or Got it → back to `/`.
 - Guest progress is keyed by SLUG, in the exact shape
   `lessons.importGuestProgress` takes. `AccountSync` imports it after sign-up
   and clears it only on success.
+- **Sign-up prompt.** A guest's FIRST finished lesson shows "Keep your
+  progress" on the completion screen (`SignUpPrompt` / `useSignUpPrompt`):
+  "Sign up for free", on the right, opens onboarding. No dismiss button: it
+  shows once, after the first lesson only. Never for accounts, later lessons,
+  or when auth isn't configured. It sits well below the navigation (a
+  separate offer).
+- **Lesson complete → Next lesson** (primary), the next by `sortOrder` for the
+  instrument, from the same cached `lessons.list` query as the grid. Back to
+  lessons only when there's no next lesson or the list can't load.
 - Item progress uses the most specific table: chords → `user_chord_progress`,
   shapes → `user_chord_shape_progress`.
 - URLs use the stable slug (`lessonRoute(slug)`), never names or ids. The
