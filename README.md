@@ -52,9 +52,3 @@ the Privy dashboard (see `apps/web/src/constants/auth.ts`).
 | `db:push` / `db:seed` / `db:studio`| Local-only schema sync / idempotent seed / Drizzle Studio    |
 | `docker:up` / `docker:down`        | Full stack in containers (`down` also deletes volumes)       |
 | `clean`                            | Every workspace's own `clean`, then root `node_modules`      |
-
-Anything touching the database or a running service is wrapped in
-`dotenv --` so it reads the root `.env`. `build` is too: Next inlines
-`NEXT_PUBLIC_*` at build time, and `env/public.ts` fails the build rather than
-bake in an undefined API URL. `dev:no-env` exists for when env
-loading itself is what's broken.
