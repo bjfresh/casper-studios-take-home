@@ -1,0 +1,423 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Semantic names (primary, danger, muted-foreground…) rather than
+ * palette names, so components never encode a specific hue and theming is a
+ * change here only. Values are swapped per scheme below; `@theme inline` maps
+ * them to utilities (bg-primary, text-danger…) that read the variable at runtime.
+ */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.01 265);
+  --surface: oklch(1 0 0);
+  --muted: oklch(0.97 0.003 265);
+  --muted-foreground: oklch(0.52 0.015 265);
+  --border: oklch(0.92 0.004 265);
+  --input: oklch(0.87 0.006 265);
+  --input-hover: oklch(0.75 0.01 265);
+  --ring: oklch(0.55 0.2 265);
+  --primary: oklch(0.45 0.2 265);
+  --primary-hover: oklch(0.39 0.19 265);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.005 265);
+  --secondary-hover: oklch(0.91 0.008 265);
+  --secondary-foreground: oklch(0.21 0.01 265);
+  --accent: oklch(0.96 0.005 265);
+  /* Status colours come from the brand ramps, at the closest hue: danger is
+     brick ember (brand-1), success medium jungle (brand-2), warning amber
+     gold (brand-3). Base = the swatch (fills, borders, tints); "-strong" =
+     the step that reads as text on a low-opacity tint of it (Badge);
+     "-foreground" = text on the solid base, per the palette's -fg. */
+  --danger: var(--color-brand-1-500);
+  --danger-hover: var(--color-brand-1-600);
+  --danger-strong: var(--color-brand-1-700);
+  --danger-foreground: var(--color-brand-1-fg);
+  --success: var(--color-brand-2-600);
+  --success-strong: var(--color-brand-2-700);
+  --success-foreground: var(--color-brand-2-fg);
+  --warning: var(--color-brand-3-500);
+  --warning-strong: var(--color-brand-3-800);
+  --warning-foreground: var(--color-brand-3-fg);
+  /* Chord notes (ChordDiagram): flat brand green (brand-2-500), in both
+     themes, with a dark label: white on this green is too faint for 10px
+     note names; brand-2-950 clears 4.5:1 comfortably. To change the note
+     colour, change these three (and the dark ring below). */
+  --note: var(--color-brand-2-500);
+  --note-ring: var(--color-brand-2-500);
+  --note-foreground: var(--color-brand-2-950);
+  /* Interval labels on chord diagrams (1, ♭3, 5): the brand accent, at its
+     text-safe step for this background. */
+  --interval: var(--color-brand-4-text);
+  /* The brand accent: the blue brand swatch itself (brand-5-500), for form
+     controls (switches, radios, checkboxes, sliders, select checks), primary
+     buttons and lesson progress, with white on it. A deliberate choice:
+     white on 500 is ~2.4:1, under WCAG AA for text (4.5:1, or 3:1 large),
+     and the swatch is ~2.4:1 on the white page, under 3:1 for UI. States
+     never rely on its colour alone (thumb position, the check, the dot, the
+     fill's length). For AA text, 700 (#006b99) gives 5.9:1 with white. */
+  --control: var(--color-brand-5-500);
+  --control-hover: var(--color-brand-5-600);
+  --control-foreground: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.17 0.01 265);
+    --foreground: oklch(0.96 0.003 265);
+    --surface: oklch(0.21 0.01 265);
+    --muted: oklch(0.25 0.01 265);
+    --muted-foreground: oklch(0.7 0.015 265);
+    --border: oklch(0.3 0.01 265);
+    --input: oklch(0.36 0.012 265);
+    --input-hover: oklch(0.46 0.014 265);
+    --ring: oklch(0.7 0.16 265);
+    --primary: oklch(0.65 0.18 265);
+    --primary-hover: oklch(0.71 0.16 265);
+    --primary-foreground: oklch(0.15 0.01 265);
+    --secondary: oklch(0.28 0.01 265);
+    --secondary-hover: oklch(0.33 0.012 265);
+    --secondary-foreground: oklch(0.96 0.003 265);
+    --accent: oklch(0.26 0.01 265);
+    /* The same ramps, lighter steps for a dark page; dark text on the fills. */
+    --danger: var(--color-brand-1-400);
+    --danger-hover: var(--color-brand-1-300);
+    --danger-strong: var(--color-brand-1-200);
+    --danger-foreground: var(--color-brand-1-950);
+    --success: var(--color-brand-2-500);
+    --success-strong: var(--color-brand-2-300);
+    --success-foreground: var(--color-brand-2-950);
+    --warning: var(--color-brand-3-400);
+    --warning-strong: var(--color-brand-3-200);
+    --warning-foreground: var(--color-brand-3-950);
+    /* Notes keep the flat swatch; the ring lifts a step to show on dark. */
+    --note-ring: var(--color-brand-2-400);
+    /* The -text aliases assume a white page; on dark, a lighter step reads. */
+    --interval: var(--color-brand-4-300);
+    /* The same swatch reads strongly on dark; hover lifts toward 400. */
+    --control: var(--color-brand-5-500);
+    --control-hover: var(--color-brand-5-400);
+    --control-foreground: #ffffff;
+  }
+}
+
+/*
+ * Motion. Tailwind's own ease-out (0, 0, 0.2, 1) is too weak for UI motion;
+ * this strong ease-out replaces it, so `ease-out` utilities and the
+ * animations below share one curve.
+ */
+/*
+ * Brand palette, full 50-950 ramps. Numbered rather than named after the hue so
+ * a repalette is a value change, not a rename across every call site.
+ *
+ * Do not assume a step is legible from its number. The step that first clears
+ * WCAG AA as text on white differs per ramp — 500 for brand-1 and brand-4, 700
+ * for brand-2 and brand-5, 800 for brand-3, whose 500 is 1.61:1. The semantic
+ * aliases below encode those; prefer them over naming a step directly.
+ *
+ * `static` because a plain @theme prunes variables no utility class references.
+ * Anything reading these through var() — print stylesheets, canvas, inline
+ * styles for a business's own palette — would otherwise silently get nothing.
+ */
+@theme static {
+  /* brick ember */
+  --color-brand-1-50: #fbebe9;
+  --color-brand-1-100: #f8d7d3;
+  --color-brand-1-200: #f0afa8;
+  --color-brand-1-300: #e9877c;
+  --color-brand-1-400: #e15f51;
+  --color-brand-1-500: #da3725;
+  --color-brand-1-600: #ae2c1e;
+  --color-brand-1-700: #832116;
+  --color-brand-1-800: #57160f;
+  --color-brand-1-900: #2c0b07;
+  --color-brand-1-950: #1f0805;
+
+  /* medium jungle */
+  --color-brand-2-50: #effaea;
+  --color-brand-2-100: #dff5d6;
+  --color-brand-2-200: #beecac;
+  --color-brand-2-300: #9ee283;
+  --color-brand-2-400: #7ed85a;
+  --color-brand-2-500: #5dcf30;
+  --color-brand-2-600: #4ba527;
+  --color-brand-2-700: #387c1d;
+  --color-brand-2-800: #255313;
+  --color-brand-2-900: #13290a;
+  --color-brand-2-950: #0d1d07;
+
+  /* amber gold */
+  --color-brand-3-50: #fff9e5;
+  --color-brand-3-100: #fff3cc;
+  --color-brand-3-200: #ffe799;
+  --color-brand-3-300: #ffdb66;
+  --color-brand-3-400: #ffcf33;
+  --color-brand-3-500: #ffc300;
+  --color-brand-3-600: #cc9c00;
+  --color-brand-3-700: #997500;
+  --color-brand-3-800: #664e00;
+  --color-brand-3-900: #332700;
+  --color-brand-3-950: #241b00;
+
+  /* royal orchid */
+  --color-brand-4-50: #f7eafb;
+  --color-brand-4-100: #eed5f6;
+  --color-brand-4-200: #deaaee;
+  --color-brand-4-300: #cd80e5;
+  --color-brand-4-400: #bd56dc;
+  --color-brand-4-500: #ac2bd4;
+  --color-brand-4-600: #8a23a9;
+  --color-brand-4-700: #671a7f;
+  --color-brand-4-800: #451155;
+  --color-brand-4-900: #22092a;
+  --color-brand-4-950: #18061e;
+
+  /* frozen lake */
+  --color-brand-5-50: #e5f7ff;
+  --color-brand-5-100: #ccf0ff;
+  --color-brand-5-200: #99e0ff;
+  --color-brand-5-300: #66d1ff;
+  --color-brand-5-400: #33c2ff;
+  --color-brand-5-500: #00b2ff;
+  --color-brand-5-600: #008fcc;
+  --color-brand-5-700: #006b99;
+  --color-brand-5-800: #004766;
+  --color-brand-5-900: #002433;
+  --color-brand-5-950: #001924;
+
+  /*
+   * The default swatch: the step each ramp is recognisably "itself" at.
+   * Referenced by bg-brand-1 with no step suffix.
+   */
+  --color-brand-1: var(--color-brand-1-500);
+  --color-brand-2: var(--color-brand-2-600);
+  --color-brand-3: var(--color-brand-3-500);
+  --color-brand-4: var(--color-brand-4-500);
+  --color-brand-5: var(--color-brand-5-500);
+
+  /* Text/icon colour to place *on* the swatch above. */
+  --color-brand-1-fg: #ffffff; /* on 500: 4.61:1  */
+  --color-brand-2-fg: #000000; /* on 600: 6.33:1  */
+  --color-brand-3-fg: #000000; /* on 500: 12.31:1 */
+  --color-brand-4-fg: #ffffff; /* on 500: 5.18:1  */
+  --color-brand-5-fg: #000000; /* on 500: 8.31:1  */
+
+  /*
+   * The step readable *as text* on the page background, which is not the same
+   * step as the swatch. brand-3-500 is 1.61:1 on white — unusable for copy —
+   * so body text must come from here, never from the raw swatch.
+   */
+  --color-brand-1-text: var(--color-brand-1-500); /* 4.61:1 on white */
+  --color-brand-2-text: var(--color-brand-2-700); /* 5.16:1 */
+  --color-brand-3-text: var(--color-brand-3-800); /* 7.91:1 */
+  --color-brand-4-text: var(--color-brand-4-500); /* 5.18:1 */
+  --color-brand-5-text: var(--color-brand-5-700); /* 5.89:1 */
+
+  /* Ordered ramp for charts and multi-series accents. */
+  --gradient-brand: linear-gradient(
+    90deg,
+    var(--color-brand-1),
+    var(--color-brand-2),
+    var(--color-brand-3),
+    var(--color-brand-4),
+    var(--color-brand-5)
+  );
+}
+
+@theme {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@theme inline {
+  /* Type roles. Each points at a next/font variable (constants/fonts.ts, set
+     on <html>), with a system fallback while it loads. */
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
+  --font-headline: var(--font-quicksand), ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-quicksand), ui-rounded, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-hover: var(--input-hover);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-strong: var(--success-strong);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-strong: var(--warning-strong);
+  --color-danger-strong: var(--danger-strong);
+  --color-interval: var(--interval);
+  --color-control: var(--control);
+  --color-note: var(--note);
+  --color-note-ring: var(--note-ring);
+  --color-note-foreground: var(--note-foreground);
+  --color-control-hover: var(--control-hover);
+  --color-control-foreground: var(--control-foreground);
+}
+
+@layer base {
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}
+
+/*
+ * The lesson's chord timer (LessonPage → ChordTimer): fills left to right
+ * (empty to full, growing from its left edge) over the per-chord duration,
+ * continuously. Transform, not width, so it stays on the
+ * compositor and never repaints the layout.
+ */
+@keyframes chord-timer {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.chord-timer {
+  animation-name: chord-timer;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  will-change: transform;
+}
+
+/*
+ * Lesson motion (ChordDiagram, LessonPage). One system:
+ *
+ * - A chord's notes ripple in across the strings as drawn: each one pops
+ *   (fade in from half size, a 1.1 overshoot, settle at exactly 1), 50ms
+ *   after the string before it (the delay is set inline). The grid never
+ *   moves; only the notes do.
+ * - Skip, then Got it, rise in once when the lesson appears.
+ *
+ * CSS keyframes: predetermined motion that stays smooth while the page is
+ * busy, and transform/opacity only. "backwards" holds each element at its
+ * first frame during its delay, and leaves no fill afterwards, so hover and
+ * press transforms (on an inner element) take over cleanly. A new chord
+ * mounts new markers, which restarts the ripple; nothing is queued.
+ */
+@keyframes chord-note-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.chord-note-enter {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chord-note-pop 220ms var(--ease-out) backwards;
+}
+
+/*
+ * Note marker states. Default: a faint ring (~18%), a root's at full
+ * strength (the highlighted state). Hover and press only where a real
+ * pointer exists, so a tap never leaves a stuck hover.
+ */
+.chord-note {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 160ms var(--ease-out);
+}
+
+.chord-note-orb {
+  transition: filter 150ms ease;
+}
+
+.chord-note-ring {
+  opacity: 0.18;
+  transition: opacity 150ms ease;
+}
+
+.chord-note[data-root] .chord-note-ring {
+  opacity: 0.85;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chord-note:hover .chord-note-orb {
+    filter: brightness(1.12);
+  }
+
+  .chord-note:hover .chord-note-ring {
+    opacity: 0.35;
+  }
+
+  .chord-note[data-root]:hover .chord-note-ring {
+    opacity: 1;
+  }
+}
+
+.chord-note:active {
+  transform: scale(0.97);
+}
+
+.chord-note:active .chord-note-orb {
+  filter: brightness(0.9);
+}
+
+.chord-note:active .chord-note-ring {
+  opacity: 0.5;
+}
+
+.chord-note[data-root]:active .chord-note-ring {
+  opacity: 1;
+}
+
+@keyframes lesson-control-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lesson-control-enter {
+  animation: lesson-control-enter 220ms var(--ease-out) backwards;
+}
+
+/* Reduced motion: everything is simply there, at its final size. */
+@media (prefers-reduced-motion: reduce) {
+  .chord-note-enter,
+  .lesson-control-enter {
+    animation: none;
+  }
+
+  .chord-note,
+  .chord-note:active {
+    transform: none;
+  }
+}
