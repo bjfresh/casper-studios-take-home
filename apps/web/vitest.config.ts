@@ -20,6 +20,36 @@ export default defineConfig({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // Pre-bundled up front. Otherwise, on a cold cache (every CI run, a fresh
+  // clone), Vite discovers these partway through the browser run, re-bundles
+  // and reloads, and the test files loading at that moment fail. Add a
+  // dependency here when a test first imports it.
+  optimizeDeps: {
+    include: [
+      '@hookform/resolvers/zod',
+      '@orpc/client',
+      '@orpc/client/fetch',
+      '@orpc/client/standard',
+      '@orpc/contract',
+      '@orpc/contract/plugins',
+      '@orpc/tanstack-query',
+      '@privy-io/react-auth',
+      '@tanstack/react-query',
+      'class-variance-authority',
+      'clsx',
+      'next/font/google',
+      'next/link',
+      'radix-ui',
+      'react',
+      'react-dom',
+      'react-hook-form',
+      'react/jsx-dev-runtime',
+      'react/jsx-runtime',
+      'tailwind-merge',
+      'vitest-browser-react',
+      'zod',
+    ],
+  },
   test: {
     include: ['src/**/__tests__/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],
